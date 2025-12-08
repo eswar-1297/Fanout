@@ -8,8 +8,11 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Middleware
-app.use(cors());
+// Middleware - Allow CORS from any origin for API access
+app.use(cors({
+  origin: '*', // In production, you can restrict this to your Vercel domain
+  credentials: false
+}));
 app.use(express.json());
 
 // Request logging
