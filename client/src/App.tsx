@@ -37,9 +37,8 @@ function App() {
     setResult(null);
 
     try {
-      // Use environment variable for API URL in production, fallback to relative path in dev
-      const apiUrl = import.meta.env.VITE_API_URL || '';
-      const response = await fetch(`${apiUrl}/api/fanout`, {
+      // Use relative path - works in both dev (proxy) and production (same server)
+      const response = await fetch('/api/fanout', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -1,144 +1,327 @@
-# Deployment Guide
+# Deployment Guide - Render.com (Full Stack)
 
-This project has two parts that need to be deployed separately:
+This guide shows you how to deploy both frontend and backend together on Render.com as a single application.
 
-## 🎨 Frontend Deployment (Vercel)
+## 🚀 **Deploy Full Stack on Render.com**
 
-### Step 1: Deploy to Vercel
-
-1. Go to [https://vercel.com](https://vercel.com) and sign in
-2. Click "Add New" → "Project"
-3. Import your GitHub repository: `eswar-1297/Fanout`
-4. **Important Configuration:**
-   - **Framework Preset:** Select **"Vite"**
-   - **Root Directory:** Change from `./` to **`client`** (click Edit button)
-   - **Build Command:** `npm run build` (auto-filled)
-   - **Output Directory:** `dist` (auto-filled)
-   - **Install Command:** `npm install` (auto-filled)
-
-5. Click **"Deploy"**
-
-Your frontend will be live at: `https://your-project.vercel.app`
+### **Prerequisites:**
+- GitHub account with your repository pushed
+- OpenAI API key
+- Render.com account (sign up free at https://render.com)
 
 ---
 
-## 🚀 Backend Deployment (Render.com)
+## **Step-by-Step Deployment**
 
-### Step 1: Deploy to Render
+### **1. Sign in to Render**
 
-1. Go to [https://render.com](https://render.com) and sign in with GitHub
-2. Click **"New +"** → **"Web Service"**
-3. Select your repository: `eswar-1297/Fanout`
-4. Configure the service:
-
-   **Basic Settings:**
-   - **Name:** `fanout-backend` (or any name you prefer)
-   - **Region:** Choose closest to your users
-   - **Branch:** `main`
-   - **Root Directory:** Leave **blank** (uses repository root)
-   - **Runtime:** `Node`
-
-   **Build & Deploy:**
-   - **Build Command:** 
-     ```
-     npm install && npm run build
-     ```
-   - **Start Command:**
-     ```
-     npm start
-     ```
-
-   **Environment Variables:**
-   Click "Add Environment Variable" and add:
-   - **Key:** `OPENAI_API_KEY`
-   - **Value:** `your-openai-api-key-here`
-   
-   - **Key:** `PORT`
-   - **Value:** `3001`
-
-5. Click **"Create Web Service"**
-
-Wait 5-10 minutes for the initial deployment. You'll get a URL like:
-`https://fanout-backend-xyz.onrender.com`
+1. Go to [https://render.com](https://render.com)
+2. Click **"Get Started"** or **"Sign In"**
+3. Choose **"Sign in with GitHub"**
+4. Authorize Render to access your GitHub repositories
 
 ---
 
-## 🔗 Connect Frontend to Backend
+### **2. Create a New Web Service**
 
-### Option 1: Using Environment Variables (Recommended)
-
-1. Create `client/.env.production`:
-   ```env
-   VITE_API_URL=https://your-backend.onrender.com
-   ```
-
-2. Update `client/src/App.tsx` to use environment variable:
-   ```typescript
-   const API_URL = import.meta.env.VITE_API_URL || '';
-   
-   const response = await fetch(`${API_URL}/api/fanout`, {
-     // ... rest of the code
-   });
-   ```
-
-3. Redeploy frontend on Vercel
-
-### Option 2: Using Vercel Rewrites (Current Setup)
-
-Your frontend is already configured to proxy API requests.
-
-1. Go to your Vercel project settings
-2. Go to "Settings" → "Environment Variables"
-3. Add:
-   - **Key:** `API_URL`
-   - **Value:** `https://your-backend.onrender.com`
-
-The `vite.config.ts` proxy will handle routing in development.
+1. Click the **"New +"** button (top right)
+2. Select **"Web Service"**
+3. Click **"Connect a repository"** or select from the list
+4. Find and select: **`eswar-1297/Fanout`**
+5. Click **"Connect"**
 
 ---
 
-## ✅ Testing
+### **3. Configure Your Web Service**
 
-1. **Test Backend:**
-   ```bash
-   curl -X POST https://your-backend.onrender.com/api/fanout \
-     -H "Content-Type: application/json" \
-     -d '{"main_query": "What is AI?", "max_fanouts": 5}'
-   ```
+Fill in the following settings:
 
-2. **Test Frontend:**
-   - Visit your Vercel URL
-   - Enter a query and click "Generate Fanout Queries"
+#### **Basic Settings:**
+```
+Name: fanout-app
+(or any name you prefer, like: fanout-query-generator)
 
----
+Region: Oregon (US West) 
+(or choose the closest to your users)
 
-## 🐛 Troubleshooting
+Branch: main
 
-### Frontend Issues:
-- **Build fails:** Check that Root Directory is set to `client`
-- **API calls fail:** Check CORS settings in backend
-- **Blank page:** Check browser console for errors
+Root Directory: [LEAVE THIS BLANK]
+```
 
-### Backend Issues:
-- **Build fails:** Check that `npm run build` works locally
-- **Deployment fails:** Check Render logs for errors
-- **OpenAI errors:** Verify `OPENAI_API_KEY` is set correctly
-- **Port errors:** Make sure `PORT` environment variable is set
+#### **Build Settings:**
+```
+Runtime: Node
 
-### CORS Issues:
-If you get CORS errors, update `src/index.ts`:
-```typescript
-app.use(cors({
-  origin: ['https://your-frontend.vercel.app', 'http://localhost:5173'],
-  credentials: true
-}));
+Build Command:
+npm install && npm run build
+
+Start Command:
+npm start
+```
+
+#### **Plan:**
+```
+Select: Free
+(You can upgrade later if needed)
 ```
 
 ---
 
-## 📝 Notes
+### **4. Add Environment Variables**
 
-- Render free tier may have cold starts (10-30 seconds on first request)
-- Vercel deploys automatically on every push to `main` branch
-- Update backend URL in frontend after backend deployment
+Click **"Advanced"** or scroll down to **"Environment Variables"** section.
+
+Click **"Add Environment Variable"** and add:
+
+**Variable 1:**
+```
+Key: OPENAI_API_KEY
+Value: sk-your-actual-openai-api-key-here
+```
+
+**Variable 2:**
+```
+Key: PORT
+Value: 3001
+```
+
+**Variable 3 (Optional - for production):**
+```
+Key: NODE_ENV
+Value: production
+```
+
+---
+
+### **5. Deploy!**
+
+1. Review all settings
+2. Click **"Create Web Service"** at the bottom
+3. Wait for deployment (5-10 minutes for first deploy)
+
+You'll see:
+- ✅ Building...
+- ✅ Deploying...
+- ✅ Live
+
+Your app will be available at:
+```
+https://fanout-app.onrender.com
+```
+(or whatever name you chose)
+
+---
+
+## **✅ Testing Your Deployment**
+
+### **Test 1: Health Check**
+Open in browser:
+```
+https://your-app.onrender.com/health
+```
+
+Should return:
+```json
+{
+  "status": "ok",
+  "timestamp": "2024-12-08T..."
+}
+```
+
+### **Test 2: Frontend**
+Open in browser:
+```
+https://your-app.onrender.com
+```
+
+You should see the Fanout Query Generator interface!
+
+### **Test 3: Generate Queries**
+1. Enter a query: `"What is machine learning?"`
+2. Set max fanouts: `10`
+3. Click **"Generate Fanout Queries"**
+4. Wait 5-10 seconds
+5. See the generated fanout queries! 🎉
+
+---
+
+## **🔧 How It Works**
+
+1. **Build Process:**
+   - `npm install` - Installs root dependencies
+   - `npm run build` - Runs:
+     - `npm run build:client` - Builds React app → `client/dist/`
+     - `npm run build:server` - Compiles TypeScript → `dist/`
+
+2. **Runtime:**
+   - Express server starts on port specified by Render
+   - Serves API routes at `/api/*`
+   - Serves React app (static files) for all other routes
+   - Everything runs on the same domain - no CORS issues!
+
+---
+
+## **📊 Monitoring & Logs**
+
+### **View Logs:**
+1. Go to your Render dashboard
+2. Click on your service
+3. Click **"Logs"** tab
+4. See real-time logs of your application
+
+### **View Metrics:**
+1. Click **"Metrics"** tab
+2. See:
+   - CPU usage
+   - Memory usage
+   - Request count
+   - Response times
+
+---
+
+## **🔄 Automatic Deployments**
+
+Render automatically redeploys when you push to GitHub:
+
+1. Make changes locally
+2. Commit and push to `main` branch:
+   ```bash
+   git add .
+   git commit -m "Update feature"
+   git push
+   ```
+3. Render automatically detects the push
+4. Rebuilds and redeploys (2-5 minutes)
+
+---
+
+## **🐛 Troubleshooting**
+
+### **Build Failed:**
+
+**Check Render build logs:**
+- Go to your service → "Logs" tab
+- Look for errors in the build output
+
+**Common issues:**
+- Missing dependencies: Run `npm install` locally first
+- TypeScript errors: Run `npm run build` locally to check
+- Node version: Render uses Node 14+ by default
+
+**Fix:**
+```bash
+# Test locally first
+npm install
+npm run build
+npm start
+# Then visit http://localhost:3001
+```
+
+### **Deploy Failed:**
+
+**Check start command:**
+- Make sure `dist/index.js` exists after build
+- Verify `npm start` works locally
+
+### **Application Crashes:**
+
+**Check environment variables:**
+- Verify `OPENAI_API_KEY` is set correctly
+- Check Render dashboard → Settings → Environment Variables
+
+**Check logs:**
+- Look for error messages in Logs tab
+- Common: "Invalid API key" or "Module not found"
+
+### **Slow First Load (Cold Start):**
+
+**This is normal on Render free tier:**
+- App spins down after 15 minutes of inactivity
+- First request after spin-down takes 30-60 seconds
+- Subsequent requests are fast
+
+**Solutions:**
+- Upgrade to paid plan (no cold starts)
+- Use a uptime monitor to keep it awake
+- Just wait 30 seconds on first load 😊
+
+### **API Requests Failing:**
+
+**Check OpenAI API Key:**
+```bash
+# Test your API key
+curl https://api.openai.com/v1/models \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+**Check CORS:**
+- Should work fine since frontend and backend are on same domain
+- Check browser console for errors
+
+---
+
+## **💰 Costs**
+
+### **Free Tier Includes:**
+- ✅ 750 hours/month (enough for one app 24/7)
+- ✅ Automatic HTTPS
+- ✅ Custom domains
+- ✅ Auto-deploys from GitHub
+- ⚠️ Spins down after 15 min inactivity
+- ⚠️ Cold start delay (30-60 seconds)
+
+### **Paid Tier ($7/month):**
+- ✅ No spin down
+- ✅ No cold starts
+- ✅ More resources
+- ✅ Better performance
+
+---
+
+## **🎯 Quick Reference**
+
+### **Your URLs:**
+```
+Application: https://your-app-name.onrender.com
+Health Check: https://your-app-name.onrender.com/health
+API Endpoint: https://your-app-name.onrender.com/api/fanout
+```
+
+### **Key Commands:**
+```bash
+# Test locally
+npm run dev          # Dev mode (separate servers)
+npm run build        # Production build
+npm start           # Production mode
+
+# Deploy
+git push origin main # Automatic deploy on Render
+```
+
+### **Environment Variables:**
+- `OPENAI_API_KEY` - Your OpenAI API key (required)
+- `PORT` - Auto-set by Render, or use 3001
+- `NODE_ENV` - Set to "production" (optional)
+
+---
+
+## **🚀 Next Steps**
+
+### **Custom Domain (Optional):**
+1. Go to service → "Settings"
+2. Scroll to "Custom Domain"
+3. Add your domain
+4. Update DNS records as shown
+
+### **Environment Switching:**
+You can create multiple services:
+- `fanout-production` (main branch)
+- `fanout-staging` (develop branch)
+
+### **Monitoring:**
+Set up alerts:
+1. Go to "Settings" → "Notifications"
+2. Add email or Slack webhook
+3. Get notified of deploy failures
 
