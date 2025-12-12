@@ -1,5 +1,6 @@
 import { openai, LLM_MODEL } from '../config/openai';
-import { FanoutQuery, FanoutResponse } from '../types/fanout';
+import { genAI, GEMINI_MODEL } from '../config/gemini';
+import { FanoutQuery, FanoutResponse, AIProvider } from '../types/fanout';
 
 const SYSTEM_PROMPT = `You are an elite AI search orchestrator with deep knowledge of how ChatGPT, Perplexity AI, Google Gemini, Bing Copilot, and Claude decompose queries for retrieval. Your role is to reverse-engineer the EXACT sub-queries these systems generate internally when searching for information.
 
@@ -394,38 +395,191 @@ Remember: These queries will determine whether content gets cited by AI search e
   return prompt;
 }
 
-export async function generateFanoutQueries(
+// Generate fanout queries using ChatGPT
+async function generateWithChatGPT(
   mainQuery: string,
   domain?: string,
   maxFanouts: number = 10
+): Promise<FanoutQuery[]> {
+  console.log('Using ChatGPT...');
+  
+  const userPrompt = buildUserPrompt(mainQuery, domain, maxFanouts);
+
+  const response = await openai.chat.completions.create({
+    model: LLM_MODEL,
+    messages: [
+      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'user', content: userPrompt },
+    ],
+    temperature: 0.7,
+    response_format: { type: 'json_object' },
+    max_tokens: 4000,
+    top_p: 0.9,
+  });
+
+  const content = response.choices[0].message.content;
+  if (!content) {
+    throw new Error('No content received from ChatGPT');
+  }
+
+  const parsed = JSON.parse(content);
+  return parsed.fanouts || [];
+}
+
+// Generate fanout queries using Gemini
+async function generateWithGemini(
+  mainQuery: string,
+  domain?: string,
+  maxFanouts: number = 10
+): Promise<FanoutQuery[]> {
+  console.log('Using Gemini...');
+  
+  const userPrompt = buildUserPrompt(mainQuery, domain, maxFanouts);
+  const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
+
+  const result = await model.generateContent({
+    contents: [
+      {
+        role: 'user',
+        parts: [{ text: `${SYSTEM_PROMPT}\n\n${userPrompt}\n\nReturn ONLY valid JSON with a "fanouts" array. No other text.` }],
+      },
+    ],
+    generationConfig: {
+      temperature: 0.7,
+      topP: 0.9,
+      maxOutputTokens: 4000,
+    },
+  });
+
+  const response = result.response;
+  const text = response.text();
+  
+  // Clean up the response - remove markdown code blocks if present
+  let cleanedText = text.trim();
+  if (cleanedText.startsWith('```json')) {
+    cleanedText = cleanedText.replace(/```json\n?/g, '').replace(/```\n?$/g, '');
+  } else if (cleanedText.startsWith('```')) {
+    cleanedText = cleanedText.replace(/```\n?/g, '');
+  }
+  
+  const parsed = JSON.parse(cleanedText);
+  return parsed.fanouts || [];
+}
+
+// Generate fanout queries using Perplexity (placeholder for now)
+async function generateWithPerplexity(
+  mainQuery: string,
+  domain?: string,
+  maxFanouts: number = 10
+): Promise<FanoutQuery[]> {
+  throw new Error('Perplexity API key not configured. Please provide the API key to use this provider.');
+}
+
+// Evaluate and select the best fanout queries from multiple responses
+function selectBestFanouts(
+  responses: { provider: string; fanouts: FanoutQuery[] }[],
+  maxFanouts: number
+): FanoutQuery[] {
+  console.log('\n=== Evaluating responses from multiple providers ===');
+  
+  // Score each response based on quality metrics
+  const scored = responses.map(({ provider, fanouts }) => {
+    // Calculate quality score
+    let score = 0;
+    
+    // 1. Category diversity (max 30 points)
+    const categories = new Set(fanouts.map(f => f.category));
+    score += categories.size * 5;
+    
+    // 2. Query uniqueness (max 30 points)
+    const uniqueWords = new Set(
+      fanouts.flatMap(f => f.query.toLowerCase().split(/\s+/))
+    );
+    score += Math.min(uniqueWords.size / 10, 30);
+    
+    // 3. Average query length - prefer detailed queries (max 20 points)
+    const avgLength = fanouts.reduce((sum, f) => sum + f.query.length, 0) / fanouts.length;
+    score += Math.min(avgLength / 5, 20);
+    
+    // 4. Purpose clarity (max 20 points)
+    const avgPurposeLength = fanouts.reduce((sum, f) => sum + f.purpose.length, 0) / fanouts.length;
+    score += Math.min(avgPurposeLength / 4, 20);
+    
+    console.log(`${provider}: Score ${score.toFixed(2)} (categories: ${categories.size}, queries: ${fanouts.length})`);
+    
+    return { provider, fanouts, score };
+  });
+  
+  // Sort by score and pick the best
+  scored.sort((a, b) => b.score - a.score);
+  const best = scored[0];
+  
+  console.log(`Selected: ${best.provider} (score: ${best.score.toFixed(2)})`);
+  
+  return best.fanouts;
+}
+
+// Main function to generate fanout queries with provider selection
+export async function generateFanoutQueries(
+  mainQuery: string,
+  domain?: string,
+  maxFanouts: number = 10,
+  provider: AIProvider = 'chatgpt'
 ): Promise<FanoutResponse> {
   console.log('\n=== Generating Fanout Queries ===');
   console.log('Main Query:', mainQuery);
   console.log('Domain:', domain || 'Not specified');
   console.log('Max Fanouts:', maxFanouts);
+  console.log('Provider:', provider);
 
   try {
-    const userPrompt = buildUserPrompt(mainQuery, domain, maxFanouts);
+    let fanouts: FanoutQuery[];
+    let usedProviders: string[] = [];
 
-    const response = await openai.chat.completions.create({
-      model: LLM_MODEL,
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: userPrompt },
-      ],
-      temperature: 0.7, // Balanced: creative enough for diversity, focused enough for accuracy
-      response_format: { type: 'json_object' },
-      max_tokens: 4000, // Enough tokens for detailed queries with explanations
-      top_p: 0.9, // Slightly focused sampling for higher quality
-    });
+    if (provider === 'all') {
+      // Call all available models
+      console.log('\n=== Calling all models ===');
+      const responses = await Promise.allSettled([
+        generateWithChatGPT(mainQuery, domain, maxFanouts).then(f => ({ provider: 'ChatGPT', fanouts: f })),
+        generateWithGemini(mainQuery, domain, maxFanouts).then(f => ({ provider: 'Gemini', fanouts: f })),
+        generateWithPerplexity(mainQuery, domain, maxFanouts).then(f => ({ provider: 'Perplexity', fanouts: f })),
+      ]);
 
-    const content = response.choices[0].message.content;
-    if (!content) {
-      throw new Error('No content received from LLM');
+      // Filter successful responses
+      const successfulResponses = responses
+        .filter((r): r is PromiseFulfilledResult<{ provider: string; fanouts: FanoutQuery[] }> => 
+          r.status === 'fulfilled'
+        )
+        .map(r => r.value);
+
+      if (successfulResponses.length === 0) {
+        throw new Error('All providers failed to generate queries');
+      }
+
+      usedProviders = successfulResponses.map(r => r.provider);
+      console.log(`Successfully received responses from: ${usedProviders.join(', ')}`);
+
+      // Select the best response
+      fanouts = selectBestFanouts(successfulResponses, maxFanouts);
+    } else {
+      // Use specific provider
+      switch (provider) {
+        case 'chatgpt':
+          fanouts = await generateWithChatGPT(mainQuery, domain, maxFanouts);
+          usedProviders = ['ChatGPT'];
+          break;
+        case 'gemini':
+          fanouts = await generateWithGemini(mainQuery, domain, maxFanouts);
+          usedProviders = ['Gemini'];
+          break;
+        case 'perplexity':
+          fanouts = await generateWithPerplexity(mainQuery, domain, maxFanouts);
+          usedProviders = ['Perplexity'];
+          break;
+        default:
+          throw new Error(`Unknown provider: ${provider}`);
+      }
     }
-
-    const parsed = JSON.parse(content);
-    const fanouts: FanoutQuery[] = parsed.fanouts || [];
 
     console.log(`\nGenerated ${fanouts.length} fanout queries:`);
     fanouts.forEach((f) => {
@@ -436,6 +590,8 @@ export async function generateFanoutQueries(
       main_query: mainQuery,
       domain,
       fanouts,
+      provider,
+      used_providers: usedProviders,
     };
   } catch (error) {
     console.error('Error generating fanout queries:', error);

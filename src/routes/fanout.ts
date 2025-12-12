@@ -9,6 +9,7 @@ const FanoutRequestSchema = z.object({
   main_query: z.string().min(1, 'main_query is required and cannot be empty'),
   domain: z.string().optional(),
   max_fanouts: z.number().int().positive().max(20).optional().default(10),
+  provider: z.enum(['chatgpt', 'gemini', 'perplexity', 'all']).optional().default('chatgpt'),
 });
 
 router.post('/fanout', async (req: Request, res: Response) => {
@@ -16,10 +17,10 @@ router.post('/fanout', async (req: Request, res: Response) => {
     // Validate request body
     const validatedData = FanoutRequestSchema.parse(req.body);
 
-    const { main_query, domain, max_fanouts } = validatedData;
+    const { main_query, domain, max_fanouts, provider } = validatedData;
 
     // Generate fanout queries
-    const result = await generateFanoutQueries(main_query, domain, max_fanouts);
+    const result = await generateFanoutQueries(main_query, domain, max_fanouts, provider);
 
     res.json(result);
   } catch (error) {
@@ -39,4 +40,5 @@ router.post('/fanout', async (req: Request, res: Response) => {
 });
 
 export default router;
+
 
