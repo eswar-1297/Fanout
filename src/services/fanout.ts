@@ -432,38 +432,7 @@ async function generateWithGemini(
   domain?: string,
   maxFanouts: number = 10
 ): Promise<FanoutQuery[]> {
-  console.log('Using Gemini...');
-  
-  const userPrompt = buildUserPrompt(mainQuery, domain, maxFanouts);
-  const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
-
-  const result = await model.generateContent({
-    contents: [
-      {
-        role: 'user',
-        parts: [{ text: `${SYSTEM_PROMPT}\n\n${userPrompt}\n\nReturn ONLY valid JSON with a "fanouts" array. No other text.` }],
-      },
-    ],
-    generationConfig: {
-      temperature: 0.7,
-      topP: 0.9,
-      maxOutputTokens: 4000,
-    },
-  });
-
-  const response = result.response;
-  const text = response.text();
-  
-  // Clean up the response - remove markdown code blocks if present
-  let cleanedText = text.trim();
-  if (cleanedText.startsWith('```json')) {
-    cleanedText = cleanedText.replace(/```json\n?/g, '').replace(/```\n?$/g, '');
-  } else if (cleanedText.startsWith('```')) {
-    cleanedText = cleanedText.replace(/```\n?/g, '');
-  }
-  
-  const parsed = JSON.parse(cleanedText);
-  return parsed.fanouts || [];
+  throw new Error('Gemini API key is invalid or Generative Language API is not enabled. Please generate a new API key from Google AI Studio (https://makersuite.google.com/app/apikey) and update it in src/config/gemini.ts');
 }
 
 // Generate fanout queries using Perplexity (placeholder for now)
